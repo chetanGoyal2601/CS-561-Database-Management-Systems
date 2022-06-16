@@ -1,0 +1,132 @@
+/*--
+Name - Chetan Goyal
+CWID - 20005334
+Course code - CS 561 - B
+Submission to - Prof. Samuel Kim
+--*/
+
+/*--
+Query 1
+*/--
+
+WITH ag_t as (select cust as Customer, min(quant) as min_q, max(quant) as max_q, ROUND(avg(quant)) as avg_q
+			  from sales
+			  group by cust)
+select distinct ag_t.customer as CUSTOMER, ag_t.min_q as MIN_Q, s1.prod as MIN_PROD, s1.date as MIN_DATE, s1.state as ST,
+ag_t.MAX_Q as max_q, s2.prod as MAX_PROD, s2.date as MAX_DATE, s2.state as ST,
+ag_t.avg_q as AVG_Q
+from ag_t
+LEFT JOIN sales s1
+ON s1.cust = ag_t.customer and s1.quant = ag_t.min_q
+LEFT JOIN sales s2
+ON s2.cust = ag_t.customer and s2.quant = ag_t.max_q
+order by CUSTOMER;
+
+
+/*--
+Query 2
+*/--
+
+WITH main_t as (select year, month, day, sum(quant) as total_q
+			 from sales
+			 group by year, month, day),
+	 t_ag as (select year, month, min(total_q) as slow_q, max(total_q) as busy_q
+			  from main_t
+			  group by year, month),
+	t_ag1 as (select main_t.year, main_t.month, main_t.day as slowest_day, t_ag.slow_q as slowest_total_q
+			 from main_t, t_ag
+			 where main_t.year = t_ag.year and main_t.month = t_ag.month and main_t.total_q = t_ag.slow_q),
+	t_ag2 as (select main_t.year, main_t.month, main_t.day as busiest_day, t_ag.busy_q as busiest_total_q
+			 from main_t, t_ag
+			 where main_t.year = t_ag.year and main_t.month = t_ag.month and main_t.total_q = t_ag.busy_q)
+select distinct t_ag1.year, t_ag1.month, t_ag1.slowest_day, t_ag1.slowest_total_q, t_ag2.busiest_day, t_ag2.busiest_total_q
+from t_ag1
+FULL JOIN t_ag2
+ON t_ag1.year = t_ag2.year and t_ag1.month = t_ag2.month;
+
+
+/*--
+Query 3
+*/--
+
+WITH t1 as (select cust, month, prod, sum(quant) as quant_sum
+		  from sales
+		  group by cust, month, prod),
+	t2 as (select cust, month, min(quant_sum) as min_quant_sum, max(quant_sum) as max_quant_sum
+		  from t1
+		  group by cust, month)
+select distinct t2.cust, t2.month, ta.prod as most_fav_prod, tb.prod as least_fav_prod
+from t2
+LEFT JOIN t1 as ta
+ON t2.max_quant_sum = ta.quant_sum and ta.cust = t2.cust and ta.month = t2.month
+LEFT JOIN t1 as tb
+ON t2.min_quant_sum = tb.quant_sum and tb.cust = t2.cust and tb.month = t2.month
+order by cust, month;
+
+
+/*--
+Query 4
+*/--
+
+WITH table_q1 as (select cust, prod, ROUND(avg(quant)) as Q1_AVG
+			   from sales
+			   where month = 1 or month = 2 or month = 3
+			   group by cust, prod),
+			   table_q2 as (select cust, prod, ROUND(avg(quant)) as Q2_AVG
+			   from sales
+			   where month = 4 or month = 5 or month = 6
+			   group by cust, prod),
+			   table_q3 as (select cust, prod, ROUND(avg(quant)) as Q3_AVG
+			   from sales
+			   where month = 7 or month = 8 or month = 9
+			   group by cust, prod),
+			   table_q4 as (select cust, prod, ROUND(avg(quant)) as Q4_AVG
+			   from sales
+			   where month = 10 or month = 11 or month = 12
+			   group by cust, prod),
+			   table_ag as (select cust, prod, ROUND(avg(quant)) as AVG, sum(quant) as TOTAL, count(quant) as COUNT
+						 from sales
+						 group by cust, prod)
+select distinct table_q1.cust as CUSTOMER, table_q1.prod as PRODUCT, table_q1.Q1_AVG, table_q2.Q2_AVG, table_q3.Q3_AVG, table_q4.Q4_AVG, table_ag.avg, table_ag.total, table_ag.count
+from table_q1, table_q2, table_q3, table_q4, table_ag
+where table_q1.cust = table_q2.cust and table_q1.prod = table_q2.prod
+and table_q1.cust = table_q3.cust and table_q1.prod = table_q3.prod
+and table_q1.cust = table_q4.cust and table_q1.prod = table_q4.prod
+and table_q1.cust = table_ag.cust and table_q1.prod = table_ag.prod;
+
+
+/*--
+Query 5
+*/--
+
+WITH table_q1_1 as (select prod, max(quant) as Q1_MAX
+							 from sales
+							 where month = 1 or month = 2 or month = 3
+							 group by prod),
+				 table_q2_1 as (select prod, max(quant) as Q2_MAX
+							 from sales
+							 where month = 4 or month = 5 or month = 6
+							 group by prod),
+				 table_q3_1 as (select prod, max(quant) as Q3_MAX
+								 from sales
+								 where month = 7 or month = 8 or month = 9
+								 group by prod),
+				 table_q4_1 as (select prod, max(quant) as Q4_MAX
+								 from sales
+								 where month = 10 or month = 11 or month = 12
+								 group by prod),
+				 table_q1_2 as (select table_q1_1.prod, table_q1_1.q1_max, sales.date
+							   from table_q1_1, sales
+							   where table_q1_1.prod = sales.prod and table_q1_1.q1_max = sales.quant and (sales.month = 1 or sales.month = 2 or sales.month = 3)),
+			   	table_q2_2 as (select table_q2_1.prod, table_q2_1.q2_max, sales.date
+							 from table_q2_1, sales
+							 where table_q2_1.prod = sales.prod and table_q2_1.q2_max = sales.quant and (sales.month = 4 or sales.month = 5 or sales.month = 6)),
+				 table_q3_2 as (select table_q3_1.prod, table_q3_1.q3_max, sales.date
+							 from table_q3_1, sales
+							 where table_q3_1.prod = sales.prod and table_q3_1.q3_max = sales.quant and (sales.month = 7 or sales.month = 8 or sales.month = 9)),
+				 table_q4_2 as (select table_q4_1.prod, table_q4_1.q4_max, sales.date
+							 from table_q4_1, sales
+							 where table_q4_1.prod = sales.prod and table_q4_1.q4_max = sales.quant and (sales.month = 10 or sales.month = 11 or sales.month = 12))	
+select distinct table_q1_2.prod, table_q1_2.q1_max, table_q1_2.date, table_q2_2.q2_max, table_q2_2.date, table_q3_2.q3_max, table_q3_2.date, table_q4_2.q4_max, table_q4_2.date
+from table_q1_2, table_q2_2, table_q3_2, table_q4_2
+where table_q1_2.prod = table_q2_2.prod and table_q1_2.prod = table_q3_2.prod and table_q1_2.prod = table_q4_2.prod;
